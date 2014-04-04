@@ -38,6 +38,16 @@ type splitResult struct {
 	splitVal    float64  // value to split on
 }
 
+/*
+ decision tree constructor
+
+ arguments
+ ---------
+   maxDepth:       max depth of constructed tree
+   minSamplesLeaf: necessary samples needed to construct a leaf node
+   splitMethod:    what criteria to use to calculate impurity
+                   possible values: GINI ("gini")
+*/
 func DecisionTree(maxDepth int, splitMethod string) (*decisionTree, error) {
 	var splitter splitFunction
 
@@ -60,6 +70,7 @@ func (tree decisionTree) String() string {
 }
 
 
+// fit this decision tree with samples (X) and responses (y)
 func (tree *decisionTree) Fit(X [][]float64, y []float64) error {
 	tree.context.used = make([]int, len(X))
 	tree.root = fitTree(X, y, tree.context)
@@ -67,6 +78,7 @@ func (tree *decisionTree) Fit(X [][]float64, y []float64) error {
 }
 
 
+// classify samples (X), return predicted labels
 func (tree decisionTree) Classify(X [][]float64) []float64 {
 	y := make([]float64, len(X))
 	for i := range y {
@@ -76,6 +88,7 @@ func (tree decisionTree) Classify(X [][]float64) []float64 {
 }
 
 
+// classify single sample, return predicted label
 func (tree decisionTree) ClassifySample(x []float64) float64 {
 	var label float64
 	node := tree.root
@@ -133,9 +146,21 @@ func (n treeNode) String() string {
 }
 
 
+/*
+ fits a decision tree
+
+ arguments
+ ---------
+   X:        training samples
+   y:        corresponding responses; should be in {0, 1}
+   context:  training context: how deep we are, stopping cases, etc.
+
+ returns
+ -------
+   tree root node
+*/
 func fitTree(X [][]float64, y []float64, context *treeContext) *treeNode {
 	node := new(treeNode)
-	myDepth := context.curDepth
 
 	// calculate node's probability
 	labelSum := 0.0
@@ -158,6 +183,9 @@ func fitTree(X [][]float64, y []float64, context *treeContext) *treeNode {
 		couldSplit := result.splitColumn != -1
 
 		if couldSplit {
+			// this tree's depth, sub trees will have +1
+			myDepth := context.curDepth
+
 			// populate the new node's splitting point
 			node.impurity = result.impurity
 			node.splitColumn = result.splitColumn
@@ -186,6 +214,12 @@ func fitTree(X [][]float64, y []float64, context *treeContext) *treeNode {
 }
 
 
+/*
+ finds the best column/value to split on given current context
+
+ NOTE: uses CPU-bound go-routines, increase runtime.GOMAXPROCS for
+ multicore processing and a generous speed-up
+*/
 func bestSplit(X [][]float64, y []float64, context *treeContext) splitResult {
 	nFeatures := len(X[0])
 	results := make(chan splitResult, nFeatures)
@@ -216,6 +250,15 @@ func bestSplit(X [][]float64, y []float64, context *treeContext) splitResult {
 }
 
 
+/*
+ Does an in-place split of the dataset & responses according to the
+ split column and value.
+
+ returns
+ -------
+   splitPoint: all samples with index lower than this belong in the
+               left sub tree.
+*/
 func splitDataset(X [][]float64, y []float64, splitColumn int, splitVal float64) int {
 	rearIndex := len(X) - 1
 	splitPoint := 0

@@ -5,7 +5,6 @@ import (
 	"runtime"
 	"testing"
 	"go.ml/metrics"
-	"go.ml/util"
 	"go.ml/datasets"
 )
 
@@ -31,7 +30,7 @@ func TestPrint(t *testing.T) {
 func testDataset(X [][]float64, y []float64) float64 {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
-	util.RandomShuffle(X, y)
+	datasets.RandomShuffle(X, y)
 
 	kFolds := 5
 	foldSize := int(float64(len(X)) / float64(kFolds))
