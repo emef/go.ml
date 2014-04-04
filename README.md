@@ -20,9 +20,9 @@ import (
 maxDepth := 10
 splitMethod := decision_tree.GINI
 
-tree, err := decision_tree.DecisionTree(max_depth, splitMethod)
+tree, err := decision_tree.DecisionTree(maxDepth, splitMethod)
 if err != nil {
-  fmt.Println(e)
+  fmt.Println(err)
   panic()
 }
 
