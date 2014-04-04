@@ -1,54 +1,124 @@
 package decision_tree
 
 import (
+	"sync"
 	"fmt"
-	"sort"
-	"math"
+	"errors"
 )
 
+const GINI = "gini"
+
+type splitFunction func([][]float64, []float64, int) (float64, float64)
+
+type decisionTree struct {
+	root    *treeNode     // actual tree
+	context *treeContext  // fitting context
+}
+
+type treeContext struct {
+	splitter splitFunction  // what impurity critera to split by
+	curDepth int            // how deep are we
+	maxDepth int            // maximum tree depth
+	used     []int          // which columns have we used?
+}
+
 type treeNode struct {
-	left *treeNode
-	right *treeNode
-	impurity float64
-	splitColumn int
-	splitVal float64
-	probability float64
+	left        *treeNode  // left subtree
+	right       *treeNode  // right subtree
+	impurity    float64    // impurity value
+	splitColumn int        // index of column to split by
+	splitVal    float64    // value to split on
+	probability float64    // P(1|t)
+	size        int        // number of samples in this sub tree
 }
 
-type giniSplitResult struct {
-	gini float64
-	splitColumn int
-	splitVal float64
+type splitResult struct {
+	impurity    float64  // impurity value from split criteria
+	splitColumn int      // best column to split on
+	splitVal    float64  // value to split on
 }
 
-type zipColumn struct {
-	Value float64
-	Response float64
+func DecisionTree(maxDepth int, splitMethod string) (*decisionTree, error) {
+	var splitter splitFunction
+
+	if splitMethod == "gini" {
+		splitter = splitGINI
+	} else {
+		return nil, errors.New("unknown splitting method")
+	}
+
+	tree := new(decisionTree)
+	tree.context = new(treeContext)
+	tree.context.splitter = splitter
+	tree.context.maxDepth = maxDepth
+
+	return tree, nil
 }
 
-type zipColumnSortable []zipColumn
+func (tree decisionTree) String() string {
+	return tree.root.String()
+}
 
-func (a zipColumnSortable) Len() int { return len(a) }
-func (a zipColumnSortable) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
-func (a zipColumnSortable) Less(i, j int) bool { return a[i].Value < a[j].Value }
+
+func (tree *decisionTree) Fit(X [][]float64, y []float64) error {
+	tree.context.used = make([]int, len(X))
+	tree.root = fitTree(X, y, tree.context)
+	return nil
+}
+
+
+func (tree decisionTree) Classify(X [][]float64) []float64 {
+	y := make([]float64, len(X))
+	for i := range y {
+		y[i] = tree.ClassifySample(X[i])
+	}
+	return y
+}
+
+
+func (tree decisionTree) ClassifySample(x []float64) float64 {
+	var label float64
+	node := tree.root
+
+	for {
+		if node.isLeaf() {
+			if node.probability > 0.5 {
+				label = 1
+			} else {
+				label = 0
+			}
+			break
+		} else {
+			i, val := node.splitColumn, node.splitVal
+			if x[i] < val {
+				node = node.left
+			} else {
+				node = node.right
+			}
+		}
+	}
+	return label
+}
 
 
 func (n treeNode) isLeaf() bool {
 	return n.left == nil && n.right == nil
 }
 
+
 func (n treeNode) String() string {
 	var toString func(*treeNode, string) string
 	toString = func(n *treeNode, padding string) string {
 		var s string
 		if n.isLeaf() {
-			s = fmt.Sprintf("%s(%.2f)", padding, n.probability)
+			s = fmt.Sprintf("%s(%.3f +%d)", padding, n.probability, n.size)
 		} else {
-			s = fmt.Sprintf("%s%d < %.2f  (%.3f)",
+			s = fmt.Sprintf("%s%d < %.2f  (%.3f +%d)",
 				padding,
 				n.splitColumn,
 				n.splitVal,
-				n.impurity)
+				n.impurity,
+				n.size)
 			if n.left != nil {
 				s += "\n" + toString(n.left, padding + "  ")
 			}
@@ -62,74 +132,90 @@ func (n treeNode) String() string {
 	return toString(&n, "")
 }
 
-func (tree treeNode) Classify(X [][]float64) []float64 {
-	y := make([]float64, len(X))
-	for i := range y {
-		y[i] = doClassify(&tree, X[i])
-	}
-	return y
-}
 
-func doClassify(tree *treeNode, x []float64) float64 {
-	var label float64
-	for {
-		if tree.isLeaf() {
-			if tree.probability > 0.5 {
-				label = 1
-			} else {
-				label = 0
-			}
-			break
-		} else {
-			i, val := tree.splitColumn, tree.splitVal
-			if x[i] < val {
-				tree = tree.left
-			} else {
-				tree = tree.right
-			}
-		}
-	}
-	return label
-}
-
-func Fit(X [][]float64, y []float64) *treeNode {
-	used := make([]int, len(X[0]))
-	return doFit(X, y, used)
-}
-
-func doFit(X [][]float64, y []float64, used []int) *treeNode {
+func fitTree(X [][]float64, y []float64, context *treeContext) *treeNode {
 	node := new(treeNode)
+	myDepth := context.curDepth
 
 	// calculate node's probability
 	labelSum := 0.0
 	for _, v := range y { labelSum += v }
 	node.probability = labelSum / float64(len(y))
+	node.size = len(X)
 
-	// are all columns used?
-	colSum := 0
-	for _, v := range used { colSum += v }
-
-	should_split := (colSum != len(used)) &&
+	// should we split this tree further?
+	// 1) must not exceed maxDepth
+	// 2) must have both positive and negative samples
+	should_split := context.curDepth < context.maxDepth &&
 		node.probability != 0 &&
 		node.probability != 1
 
 	if should_split {
-		node.impurity, node.splitColumn, node.splitVal = giniSplit(X, y, used)
-		couldSplit := node.splitColumn >= 0
+		// find best splitting column we haven't used
+		result := bestSplit(X, y, context)
+
+		// populate the new node's splitting point
+		node.impurity = result.impurity
+		node.splitColumn = result.splitColumn
+		node.splitVal = result.splitVal
+
+		// did we successfully split?
+		couldSplit := node.splitColumn != -1
 
 		if couldSplit {
+			// what index should we split the dataset by?
+			ix := splitDataset(X, y, node.splitColumn, node.splitVal)
+
+			// we can no longer use this column
+			used := context.used
 			used[node.splitColumn] = 1
 
-			ix := doSplit(X, y, node.splitColumn, node.splitVal)
-			node.left = doFit(X[:ix], y[:ix], used)
-			node.right = doFit(X[ix:], y[ix:], used)
+			// fit sub trees, fix context
+			context.curDepth = myDepth + 1
+			context.used = copySlice(used)
+			node.left = fitTree(X[:ix], y[:ix], context)
+
+			context.curDepth = myDepth + 1
+			context.used = copySlice(used)
+			node.right = fitTree(X[ix:], y[ix:], context)
 		}
 	}
 
 	return node
 }
 
-func doSplit(X [][]float64, y []float64, splitColumn int, splitVal float64) int {
+
+func bestSplit(X [][]float64, y []float64, context *treeContext) splitResult {
+	nFeatures := len(X[0])
+	results := make(chan splitResult, nFeatures)
+	wg := new(sync.WaitGroup)
+
+	for i := 0; i < nFeatures; i++ {
+		if context.used[i] != 1 {
+			wg.Add(1)
+			go func(i int) {
+				defer wg.Done()
+				impurity, val := context.splitter(X, y, i)
+				results <- splitResult{impurity, i, val}
+			}(i)
+		}
+	}
+
+	wg.Wait()
+	close(results)
+
+	bestResult := splitResult{1.1, -1, 0.0}
+	for result := range results {
+		if result.impurity < bestResult.impurity {
+			bestResult = result
+		}
+	}
+
+	return bestResult
+}
+
+
+func splitDataset(X [][]float64, y []float64, splitColumn int, splitVal float64) int {
 	rearIndex := len(X) - 1
 	splitPoint := 0
 	for i := 0; i < rearIndex; i++ {
@@ -147,80 +233,9 @@ func doSplit(X [][]float64, y []float64, splitColumn int, splitVal float64) int 
 	return splitPoint + 1
 }
 
-func giniSplit(X [][]float64, y []float64, used []int) (float64, int, float64) {
-	done := make(chan giniSplitResult)
-	nFeatures := len(X[0])
-	nChecked := 0
-	for i := 0; i < nFeatures; i++ {
-		if used[i] == 1 {
-			continue
-		}
 
-		go func(i int) {
-			gini, val := splitPoint(X, i, y)
-			done <- giniSplitResult{gini, i, val}
-		}(i)
-
-		nChecked += 1
-	}
-
-	bestGini, bestCol, bestVal := 1.1, -1, 0.0
-	for i := 0; i < nChecked; i++ {
-		result := <-done
-		if result.gini < bestGini {
-			bestGini = result.gini
-			bestCol = result.splitColumn
-			bestVal = result.splitVal
-		}
-	}
-
-	return bestGini, bestCol, bestVal
-}
-
-// G = p(t_l)*Gini(t_l) + p(t_r)*Gini(t_r)
-// Gini(t) = 1 - p(1|t)^2 - p(0|t)^2
-func splitPoint(X [][]float64, index int, y []float64) (float64, float64) {
-	N := len(X)
-	totalPositive := 0.0
-
-	col := make([]zipColumn, N)
-	for i := range X {
-		col[i] = zipColumn{X[i][index], y[i]}
-		totalPositive += y[i]
-	}
-
-	sort.Sort(zipColumnSortable(col))
-	nPositiveL := 0.0
-	minGini := 1.1
-	split := col[0].Value
-
-	for i := 1; i < N; i++ {
-		if col[i].Value == col[i-1].Value {
-			nPositiveL += col[i-1].Response
-			continue
-		}
-
-
-		nPositiveL += col[i-1].Response
-		pPositiveL := nPositiveL / float64(i)
-		pNegativeL := 1 - pPositiveL
-		giniL := 1 - math.Pow(pPositiveL, 2) - math.Pow(pNegativeL, 2)
-
-		nPositiveR := totalPositive - nPositiveL
-		pPositiveR := nPositiveR / float64(N - i)
-		pNegativeR := 1 - pPositiveR
-		giniR := 1 - math.Pow(pPositiveR, 2) - math.Pow(pNegativeR, 2)
-
-		pL := float64(i) / float64(N)
-		pR := 1 - pL
-
-		gini := pL * giniL + pR * giniR
-
-		if gini < minGini {
-			minGini = gini
-			split = col[i].Value
-		}
-	}
-
-	return minGini, split
+func copySlice(slice []int) []int {
+	newSlice := make([]int, len(slice))
+	copy(newSlice, slice)
+	return slice
 }
