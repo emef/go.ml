@@ -154,15 +154,16 @@ func fitTree(X [][]float64, y []float64, context *treeContext) *treeNode {
 		// find best splitting column we haven't used
 		result := bestSplit(X, y, context)
 
-		// populate the new node's splitting point
-		node.impurity = result.impurity
-		node.splitColumn = result.splitColumn
-		node.splitVal = result.splitVal
-
 		// did we successfully split?
-		couldSplit := node.splitColumn != -1
+		couldSplit := result.splitColumn != -1
 
 		if couldSplit {
+			// populate the new node's splitting point
+			node.impurity = result.impurity
+			node.splitColumn = result.splitColumn
+			node.splitVal = result.splitVal
+
+
 			// what index should we split the dataset by?
 			ix := splitDataset(X, y, node.splitColumn, node.splitVal)
 

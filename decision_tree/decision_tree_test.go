@@ -22,8 +22,8 @@ func TestBreastCancer(t *testing.T) {
 }
 
 func TestPrint(t *testing.T) {
-	X, y := datasets.Load("iris")
-	tree, _ := DecisionTree(20, GINI)
+	X, y := datasets.Load("cancer")
+	tree, _ := DecisionTree(4, GINI)
 	tree.Fit(X, y)
 	fmt.Println(tree)
 }
