@@ -1,4 +1,4 @@
-package gradient_descent
+package optimization
 
 import (
 	"fmt"
