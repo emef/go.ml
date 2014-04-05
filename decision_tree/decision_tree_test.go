@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"runtime"
 	"testing"
-	"go.ml/metrics"
-	"go.ml/datasets"
+	"github.com/emef/go.ml/metrics"
+	"github.com/emef/go.ml/datasets"
 )
 
 func TestWithIris(t *testing.T) {

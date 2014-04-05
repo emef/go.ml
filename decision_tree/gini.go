@@ -32,8 +32,8 @@ func (a zipColumnSortable) Less(i, j int) bool { return a[i].Value < a[j].Value 
  Arguments
  --------
    X:     training dataset
-   index: column index to split by
    y:     training responses
+   index: column index to split by
 
  Returns
  -------
