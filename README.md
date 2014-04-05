@@ -1,9 +1,9 @@
 go.ml
 =====
 
-Machine learning in golang
+Machine learning and optimization in golang
 
-Implementations: decision_tree
+Implementations: decision_tree, nonlinear optimization
 
 -----
 
@@ -12,9 +12,9 @@ Implementations: decision_tree
 ```go
 
 import (
-  "go.ml/datasets"
-  "go.ml/metrics"
-  "go.ml/decision_tree"
+  "github.com/emef/go.ml/datasets"
+  "github.com/emef/go.ml/metrics"
+  "github.com/emef/go.ml/decision_tree"
 )
 
 maxDepth := 10
@@ -39,4 +39,25 @@ tree.Fit(XTrain, yTrain)
 // validate on held out data
 yPred := tree.Classify(XTest)
 fmt.Println(metrics.Accuracy(yPred, yTest))
+```
+
+-----
+
+**nonlinear optimization**
+
+```go
+
+import (
+  "fmt"
+  "math"
+  "github.com/emef/go.ml/optimization"
+)
+
+f := func(x []float64) float64 {
+  return math.Sin(x[0]) * math.Pow(math.Cos(x[1]), 2)
+}
+
+x := []float64{1, 1}  // initial guess
+f_min := optimization.GradientDescent(f, x)
+fmt.Println(f_min)
 ```
