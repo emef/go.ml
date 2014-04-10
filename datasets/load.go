@@ -3,10 +3,10 @@ package datasets
 import (
 	"os"
 	"strconv"
+	"runtime"
+	"path"
 	"encoding/csv"
 )
-
-
 
 func Load(name string) ([][]float64, []float64) {
 	switch {
@@ -19,9 +19,20 @@ func Load(name string) ([][]float64, []float64) {
 	panic("unknown dataset")
 }
 
+
+func absPath(filename string) string {
+	_, thisFile, _, _ := runtime.Caller(1)
+	return path.Join(path.Dir(thisFile), filename)
+}
+
+
 func loadIris() ([][]float64, []float64) {
-	X_file, _ := os.Open("iris_X.csv")
-	y_file, _ := os.Open("iris_y.csv")
+	X_file, err1 := os.Open(absPath("iris_X.csv"))
+	y_file, err2 := os.Open(absPath("iris_y.csv"))
+
+	if err1 != nil || err2 != nil {
+		panic("couldn't open iris files")
+	}
 
 	X := make([][]float64, 0)
 	y := make([]float64, 0)
@@ -56,7 +67,12 @@ func loadIris() ([][]float64, []float64) {
 }
 
 func loadBreastCancer() ([][]float64, []float64) {
-	file, _ := os.Open("breast_cancer.csv")
+	file, err := os.Open(absPath("breast_cancer.csv"))
+
+	if err != nil {
+		panic("couldn't open csv")
+	}
+
 	reader := csv.NewReader(file)
 
 	var X [][]float64
