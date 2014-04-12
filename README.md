@@ -3,7 +3,7 @@ go.ml
 
 Machine learning and optimization in golang
 
-Implementations: decision_tree, nonlinear optimization
+Implementations: decision_tree, linear regression (OLS), nonlinear optimization
 
 -----
 
@@ -39,6 +39,40 @@ tree.Fit(XTrain, yTrain)
 // validate on held out data
 yPred := tree.Classify(XTest)
 fmt.Println(metrics.Accuracy(yPred, yTest))
+```
+
+-----
+
+**linear regression (OLS)**
+
+this is the current state... will implement as a predictor interface with fit and classify later.
+
+TODO:
+
+* most likely am not handling singular matrices properly when taking inverse
+* implement as type w/ Fit and Classify functions
+* clean up matrix package a bit (this is the only thing using it so far)
+
+```go
+
+import (
+  "github.com/emef/go.ml/datasets"
+  "github.com/emef/go.ml/metrics"
+  "github.com/emef/go.ml/matrix"
+  "github.com/emef/go.ml/linear_model"
+)
+
+X, y := datasets.Load("iris")
+datasets.RandomShuffle(X, y)
+XTrain, XTest := X[:67], X[67:]
+yTrain, yTest := y[:67], y[67:]
+
+beta := linear_model.LinearRegression(XTrain, yTrain)
+
+// validate on held out data
+yPred := matrix.VecMult(XTest, beta)
+fmt.Println(metrics.Accuracy(yPred, yTest))
+
 ```
 
 -----
