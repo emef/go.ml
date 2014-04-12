@@ -9,7 +9,7 @@ import (
 	"github.com/emef/go.ml/metrics"
 )
 
-func tTestBeta(t *testing.T) {
+func TestBeta(t *testing.T) {
 	X := [][]float64{{1,0,5}, {2,5,4}, {3,6,5}, {8,1,1}}
 	y := []float64{1, 0.5, 0.75, 0.2}
 	beta := LinearRegression(X, y)
@@ -17,7 +17,7 @@ func tTestBeta(t *testing.T) {
 	fmt.Println(matrix.VecMult(X, beta))
 }
 
-func tTestSimple(t *testing.T) {
+func TestSimple(t *testing.T) {
 	X := [][]float64{{1, 0}, {1, 0.5}, {1, 1}, {1, 1.5}}
 	y := []float64{0.3, 0.4, 0.55, 0.6}
 	beta := LinearRegression(X, y)
@@ -25,7 +25,7 @@ func tTestSimple(t *testing.T) {
 	fmt.Println(matrix.VecMult(X, beta))
 }
 
-func tTestBig(t *testing.T) {
+func TestBig(t *testing.T) {
 	n := 10000
 	m := 50
 	X := make([][]float64, n)
