@@ -27,6 +27,15 @@ func TestPrint(t *testing.T) {
 	fmt.Println(tree)
 }
 
+func TestMeanSquared(t *testing.T) {
+	X, y := datasets.Load("cancer")
+	tree, _ := DecisionTree(4, GINI)
+	tree.Fit(X, y)
+	yPred := tree.Classify(X)
+	err := metrics.MeanSquaredError(yPred, y)
+	fmt.Printf("cancer mean sq: %.3f\n", err)
+}
+
 func testDataset(X [][]float64, y []float64) float64 {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 

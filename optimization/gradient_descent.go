@@ -1,7 +1,7 @@
 package optimization
 
 import (
-	"github.com/emef/go.ml/vector"
+	"github.com/emef/go.ml/matrix"
 )
 
 type fn func([]float64) float64
@@ -95,7 +95,7 @@ func linesearch(f fn, X []float64, dir []float64) (float64, []float64) {
 		alpha := -b * 1e-3
 
 		// search down parameter space in given direction
-		X1 := vector.Add(X0, vector.Scale(alpha, dir))
+		X1 := matrix.VecAdd(X0, matrix.VecScale(alpha, dir))
 		y1 := f(X1)
 
 		// update min values or quit

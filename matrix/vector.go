@@ -1,6 +1,6 @@
-package vector
+package matrix
 
-func Scale(scalar float64, X []float64) []float64 {
+func VecScale(scalar float64, X []float64) []float64 {
 	Y := make([]float64, len(X))
 	for i, x := range X {
 		Y[i] = x * scalar
@@ -8,7 +8,7 @@ func Scale(scalar float64, X []float64) []float64 {
 	return Y
 }
 
-func Add(X, Y []float64) []float64 {
+func VecAdd(X, Y []float64) []float64 {
 	Z := make([]float64, len(X))
 	for i := range X {
 		Z[i] = X[i] + Y[i]
