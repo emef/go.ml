@@ -1,4 +1,4 @@
-package optimization
+package genetic
 
 import (
 	"sort"
