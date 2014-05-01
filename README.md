@@ -3,7 +3,7 @@ go.ml
 
 Machine learning and optimization in golang
 
-Implementations: decision_tree, linear regression (OLS), nonlinear optimization
+Implementations: decision_tree, linear regression (OLS), nonlinear optimization, genetic algorithm
 
 -----
 
@@ -94,4 +94,56 @@ f := func(x []float64) float64 {
 x := []float64{1, 1}  // initial guess
 f_min := optimization.GradientDescent(f, x)
 fmt.Println(f_min)
+```
+
+-----
+
+**genetic algorithm**
+
+Not necessarily sold on this implementation or interface; we'll see...
+
+```go
+import (
+  "math/rand"
+  "github.com/emef/go.ml/genetic"
+)
+
+/*
+A BitSample is represented by a bitfield (see github.com/emef/bitfield)
+
+The goal of this example is to coax the random samples into our target
+values (as specified in fitness())
+*/
+
+func fitness(x genetic.Sample) float64 {
+	sample := x.(genetic.BitSample)
+	target := []int{0, 0, 1, 0, 1, 1, 0, 0, 0, 0, 1, 1, 0, 1, 0, 1, 0, 1, 1, 1}
+	correct := 0.0
+	for i := 0; i < sample.field.Size(); i++ {
+		if boolToInt(sample.field.Test(uint32(i))) == target[i] {
+			correct++
+		}
+	}
+	return correct / float64(sample.field.Size())
+}
+
+/*
+Start with 20 random bit fields in `samples`
+Run the GA with the mutation probability at 20%, max of 50 epochs, and a target
+fitness value of 1.0. g.Run() will return the best sample it can find after all
+epochs have finished or target was found.
+*/
+func TestIt(t *testing.T) {
+	samples := make([]Sample, 20)
+	for i := range samples {
+		sample := genetic.NewBitSample(20)
+		indexes := rand.Perm(20)[:randInt(20)]
+		for _, j := range indexes {
+			sample.field.Set(uint32(j))
+		}
+		samples[i] = sample
+	}
+	g := genetic.New(samples, fitness, 0.2, 50, 1.0)
+	fmt.Println(g.Run())
+}
 ```
