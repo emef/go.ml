@@ -14,11 +14,6 @@ func NewBitSample(size int) BitSample {
 	return BitSample{bitfield.New(size)}
 }
 
-func (b BitSample) Fitness() float64 {
-	// overwrite this!
-	return -1
-}
-
 func (b BitSample) Mutate() {
 	length := uint32(b.field.Size())
 	p := 1.0 / float64(length)
