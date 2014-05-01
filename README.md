@@ -133,17 +133,15 @@ Run the GA with the mutation probability at 20%, max of 50 epochs, and a target
 fitness value of 1.0. g.Run() will return the best sample it can find after all
 epochs have finished or target was found.
 */
-func TestIt(t *testing.T) {
-	samples := make([]Sample, 20)
-	for i := range samples {
-		sample := genetic.NewBitSample(20)
-		indexes := rand.Perm(20)[:randInt(20)]
-		for _, j := range indexes {
-			sample.field.Set(uint32(j))
-		}
-		samples[i] = sample
+samples := make([]genetic.Sample, 20)
+for i := range samples {
+	sample := genetic.NewBitSample(20)
+	indexes := rand.Perm(20)[:randInt(20)]
+	for _, j := range indexes {
+		sample.field.Set(uint32(j))
 	}
-	g := genetic.New(samples, fitness, 0.2, 50, 1.0)
-	fmt.Println(g.Run())
+	samples[i] = sample
 }
+g := genetic.New(samples, fitness, 0.2, 50, 1.0)
+fmt.Println(g.Run())
 ```
