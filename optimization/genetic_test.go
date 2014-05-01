@@ -24,7 +24,7 @@ func (b BitFieldSample) Mutate() {
 }
 
 func (b BitFieldSample) Fitness() float64 {
-	target := []int{0, 0, 1, 0, 1, 1, 0, 0, 0, 0}
+	target := []int{0, 0, 1, 0, 1, 1, 0, 0, 0, 0, 1, 1, 0, 1, 0, 1, 0, 1, 1, 1}
 	correct := 0.0
 	for i := 0; i < b.field.Size(); i++ {
 		if boolToInt(b.field.Test(uint32(i))) == target[i] {
@@ -75,13 +75,13 @@ func randInt(max int) int {
 func TestIt(t *testing.T) {
 	samples := make([]Sample, 20)
 	for i := range samples {
-		sample := BitFieldSample{bitfield.New(10)}
-		indexes := rand.Perm(10)[:randInt(10)]
+		sample := BitFieldSample{bitfield.New(20)}
+		indexes := rand.Perm(20)[:randInt(20)]
 		for _, j := range indexes {
 			sample.field.Set(uint32(j))
 		}
 		samples[i] = sample
 	}
-	g := NewGenetic(samples, 0.5, 1e5, 10)
+	g := NewGenetic(samples, 0.5, 100, 1.0)
 	fmt.Println(g.Run())
 }

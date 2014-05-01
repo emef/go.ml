@@ -78,7 +78,9 @@ type Genetic struct {
 
 func (g Genetic) Run() Sample {
 	for i := 0; i < g.maxGenerations; i++ {
-		if g.BestCandidate().fitness >= g.minFitness {
+		best := g.BestCandidate()
+		fmt.Printf("EPOCH %d: BEST FITNESS %.3f\n", i, best.fitness)
+		if best.fitness >= g.minFitness {
 			break
 		} else {
 			g.candidates = g.candidates.nextGeneration(g.mutateRate)
