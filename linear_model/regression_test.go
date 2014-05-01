@@ -45,14 +45,26 @@ func TestBig(t *testing.T) {
 
 func TestIris(t *testing.T) {
 	X, y := datasets.Load("iris")
-	beta := LinearRegression(X, y)
-	yPred := matrix.VecMult(X, beta)
-	fmt.Println("iris error", metrics.MeanSquaredError(yPred, y))
+	datasets.RandomShuffle(X, y)
+	XTrain, XTest := X[:67], X[67:]
+	yTrain, yTest := y[:67], y[67:]
+
+	beta := LinearRegression(XTrain, yTrain)
+
+	// validate on held out data
+	yPred := matrix.VecMult(XTest, beta)
+	fmt.Println("iris error", metrics.MeanSquaredError(yPred, yTest))
 }
 
 func TestCancer(t *testing.T) {
 	X, y := datasets.Load("cancer")
-	beta := LinearRegression(X, y)
-	yPred := matrix.VecMult(X, beta)
-	fmt.Println("cancer error", metrics.MeanSquaredError(yPred, y))
+	datasets.RandomShuffle(X, y)
+	XTrain, XTest := X[:67], X[67:]
+	yTrain, yTest := y[:67], y[67:]
+
+	beta := LinearRegression(XTrain, yTrain)
+
+	// validate on held out data
+	yPred := matrix.VecMult(XTest, beta)
+	fmt.Println("cancer error", metrics.MeanSquaredError(yPred, yTest))
 }
