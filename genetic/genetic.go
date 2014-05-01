@@ -8,9 +8,10 @@ import (
 
 type Sample interface {
 	Mutate()
-	Fitness() float64
 	CrossOver(Sample) Sample
 }
+
+type Samples []Sample
 
 type Candidate struct {
 	sample Sample
@@ -29,14 +30,35 @@ func (cs Candidates) Less(i, j int) bool {
 	return cs[i].fitness < cs[j].fitness
 }
 
-func (cs Candidates) nextGeneration(mutateRate float64) Candidates {
-	nextGen := make([]Candidate, len(cs))
-	parents := make([]Candidate, len(cs) * 2)
+type Genetic struct {
+	candidates Candidates
+	fitness func(Sample) float64
+	mutateRate float64
+	maxGenerations int
+	minFitness float64
+}
+
+func (g *Genetic) Run() Sample {
+	for i := 0; i < g.maxGenerations; i++ {
+		best := g.BestCandidate()
+		fmt.Printf("EPOCH %d: BEST FITNESS %s\n", i, best)
+		if best.fitness >= g.minFitness {
+			break
+		} else {
+			g.runEpoch()
+		}
+	}
+	return g.BestCandidate().sample
+}
+
+func (g *Genetic) runEpoch() {
+	nextGen := make([]Candidate, len(g.candidates))
+	parents := make([]Candidate, len(g.candidates) * 2)
 
 	for i := range parents {
 		minAccFitness := rand.Float64()
 		accFitness := 0.0
-		for _, candidate := range cs {
+		for _, candidate := range g.candidates {
 			accFitness += candidate.fitness
 			if accFitness >= minAccFitness {
 				parents[i] = candidate
@@ -51,10 +73,10 @@ func (cs Candidates) nextGeneration(mutateRate float64) Candidates {
 	for i := 0; i < len(indexes) - 1; i += 2 {
 		a, b := parents[indexes[i]], parents[indexes[i+1]]
 		newSample := a.sample.CrossOver(b.sample)
-		if rand.Float64() < mutateRate {
+		if rand.Float64() < g.mutateRate {
 			newSample.Mutate()
 		}
-		child := Candidate{newSample, newSample.Fitness()}
+		child := Candidate{newSample, g.fitness(newSample)}
 		sumFitness += child.fitness
 		nextGen[j] = child
 		j++
@@ -65,39 +87,27 @@ func (cs Candidates) nextGeneration(mutateRate float64) Candidates {
 	}
 
 	sort.Sort(sort.Reverse(Candidates(nextGen)))
-	return nextGen
-
+	g.candidates = nextGen
 }
 
-type Genetic struct {
-	candidates Candidates
-	mutateRate float64
-	maxGenerations int
-	minFitness float64
-}
-
-func (g Genetic) Run() Sample {
-	for i := 0; i < g.maxGenerations; i++ {
-		best := g.BestCandidate()
-		fmt.Printf("EPOCH %d: BEST FITNESS %.3f\n", i, best.fitness)
-		if best.fitness >= g.minFitness {
-			break
-		} else {
-			g.candidates = g.candidates.nextGeneration(g.mutateRate)
-		}
-	}
-	return g.BestCandidate().sample
-}
 
 func (g Genetic) BestCandidate() Candidate {
 	return g.candidates[0]
 }
 
-func NewGenetic(samples []Sample, mutateRate float64, maxGenerations int, minFitness float64) Genetic {
+func New(
+	samples Samples,
+	fitnessFunc func(Sample) float64,
+	mutateRate float64,
+	maxGenerations int,
+	minFitness float64) Genetic {
+
+	// ...awkward space...
+
 	candidates := make([]Candidate, len(samples))
 	sumFitness := 0.0
 	for i, sample := range samples {
-		fitness := sample.Fitness()
+		fitness := fitnessFunc(sample)
 		candidates[i] = Candidate{sample, fitness}
 		sumFitness += fitness
 	}
@@ -107,13 +117,10 @@ func NewGenetic(samples []Sample, mutateRate float64, maxGenerations int, minFit
 
 	sort.Sort(sort.Reverse(Candidates(candidates)))
 
-	return Genetic{candidates, mutateRate, maxGenerations, minFitness}
-}
-
-func boolToInt(b bool) int {
-	if b {
-		return 1
-	} else {
-		return 0
-	}
+	return Genetic{
+		candidates,
+		fitnessFunc,
+		mutateRate,
+		maxGenerations,
+		minFitness}
 }
